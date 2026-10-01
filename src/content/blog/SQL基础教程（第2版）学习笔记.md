@@ -289,7 +289,7 @@ insert into ProductType (product_type, sum_sale_price, sum_purchase_price)
     from Product
     group by product_type;
 ```
-
+  
 ### 数据的删除
 #### 删除整张表
 ```SQL
