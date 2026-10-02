@@ -194,8 +194,17 @@ select purchase_price, count(*) from Product where product_type = '衣服' group
 #### 为聚合结果指定条件
 WHERE子句用来指定数据行的条件，HAVING子句用来指定分组的条件。
 ```SQL
-select product_type, count(*) from Product group by product_type having count(*) = 2;
-select product_type, avg(sale_price) from Product group by product_type having avg(sale_price) >= 2500;
+select product_type, count(*)
+from Product
+group by product_type
+having count(*) = 2;
+-- 组的 count(*)
+
+select product_type, avg(sale_price)
+from Product
+group by product_type
+having avg(sale_price) >= 2500;
+-- 组的 avg(sale_price)
 ```
 >HAVING 子句中能够使用的 3 种要素如下所示。  
 >  ●	常数  
@@ -331,5 +340,91 @@ commit 或 rollback;
 > 两种模式：
 > A 每条SQL语句就是一个事务（自动提交模式）
 > B 直到用户执行COMMIT或者ROLLBACK为止算作一个事务
+
+
+### 复杂查询
+#### 创建视图
+```SQL
+create view ProductSum (product_type, cnt_product) as
+select product_type, count(*) from Product group by product_type;
+
+select product_type, cnt_product from ProductSum;
+```
+> 视图就是保存好的 SELECT 语句。  
+> 定义视图时可以使用任何 SELECT 语句。  
+#### 创建多重视图
+```SQL
+create view ProductSumJim (product_type, cnt_product) as
+select product_type, cnt_product from ProductSum where product_type = '办公用品';
+```
+> 应该避免在视图的基础上创建视图。多重视图会降低 SQL 的性能。   
+
+> 视图的限制: 
+> 定义视图时不能使用ORDER BY子句  
+
+#### 对视图进行更新
+> 视图需要满足以下条件:
+> SELECT 子句中未使用 DISTINCT  
+> FROM 子句中只有一张表  
+> 未使用 GROUP BY 子句  
+> 未使用 HAVING 子句  
+```SQL
+create view ProductJim (product_id, product_name, product_type, sale_price, purchase_price, regist_date) as
+select * from Product where product_type = '办公用品';
+
+insert into ProductJim values ('0009', '印章', '办公用品', 95, 10, '2009-11-30');
+```
+#### 删除视图
+```SQL
+drop view ProductSum;
+```
+
+### 子查询
+子查询就是一次性视图（SELECT语句）。子查询在SELECT语句执行完毕之后就会消失。
+```SQL
+select product_type, cnt_product from (
+select product_type, count(*) as cnt_product from Product group by product_type
+) as ProductSum;
+```
+> 子查询作为内层查询会首先执行。
+
+#### 嵌套的子查询
+```SQL
+select product_type, cnt_product from (
+  select * from (
+    select product_type, count(*) as cnt_product from Product group by product_type
+  ) as ProductSum where cnt_product = 4
+)as ProductSum2;
+```
+
+#### 标量子查询
+必须而且只能返回 1 行 1 列的结果
+```SQL
+select product_id, product_name, sale_price from Product
+where sale_price > (select avg(sale_price) from Product);
+```
+> 几乎所有的地方都可以使用标量子查询。
+```SQL
+select product_id, product_name, sale_price, 
+  (select avg(sale_price) from Product as avg_price)
+from Product;
+
+select product_type, avg(sale_price)
+from Product
+group by product_type
+having avg(sale_price) > (select avg(sale_price) from Product);
+```
+#### **关联子查询**
+> 在细分的组内进行比较时，需要使用关联子查询。
+> 关联子查询也是用来对集合进行切分的，实际只能返回 1 行结果。
+```SQL
+select product_type, product_name, sale_price
+from Product as P1
+where sale_price > (
+  select avg(sale_price)
+  from Product as P2
+  where P1.product_type = P2.product_type
+);
+```
 
 
