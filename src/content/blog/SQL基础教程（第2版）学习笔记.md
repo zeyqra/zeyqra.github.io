@@ -427,4 +427,190 @@ where sale_price > (
 );
 ```
 
+### 六、函数、谓词、CASE表达式
+
+#### 算术函数
+> + - * /  
+> 绝对值: ABS(数值)  
+> 求余: MOD(被除数，除数)  
+> 舍入: ROUND(对象数值，保留小数的位数)  
+
+#### 字符串函数
+> 拼接: 字符串1 || 字符串2 || 字符串3  
+> 长度: LENGTH(字符串)  
+> 小写: LOWER(字符串)  
+> 大写: UPPER(字符串)  
+> 替换: REPLACE(对象字符串, 替换前的字符串, 替换后的字符串)  
+> 截取: SUBSTRING(对象字符串 FROM 截取的起始位置 FOR 截取的字符数)  
+
+#### 日期函数
+> 当前日期: CURRENT_DATE  
+> 当前时间: CURRENT_TIME  
+> 当前日期和时间: CURRENT_TIMESTAMP  
+> 截取:   
+> EXTRACT(日期元素 FROM 日期)   
+> EXTRACT(YEAR FROM CURRENT_TIMESTAMP)  
+
+#### 转换函数
+> 类型转换: cast(转换前的值 AS 想要转换的数据类型)  
+> 左侧开始第1个不是 NULL 的值: coalesce(数据1, 数据2, 数据3……)  
+
+#### 谓词
+#### LIKE
+```SQL
+-- create table SampleLike (
+--   strcol varchar(6) not null,
+--   primary key (strcol)
+-- );
+-- begin transaction;
+-- insert into SampleLike (strcol) values ('abcddd');
+-- INSERT INTO SampleLike (strcol) VALUES ('dddabc');
+-- INSERT INTO SampleLike (strcol) VALUES ('abdddc');
+-- INSERT INTO SampleLike (strcol) VALUES ('abcdd');
+-- INSERT INTO SampleLike (strcol) VALUES ('ddabc');
+-- INSERT INTO SampleLike (strcol) VALUES ('abddc');
+-- commit;
+```
+**前方一致查询**
+```SQL
+select * from SampleLike where strcol like 'ddd%';
+```
+**中间一致查询**
+```SQL
+select * from SampleLike where strcol like '%ddd%';
+```
+**后方一致查询**
+```SQL
+select * from SampleLike where strcol like '%ddd';
+```
+**自定义字符数量和位置**
+```SQL
+select * from SampleLike where strcol like 'abc__';
+select * from SampleLike where strcol like '__abc';
+select * from SampleLike where strcol like 'a_c%';
+```
+#### BETWEEN
+```SQL
+select product_name, sale_price 
+  from Product 
+  where sale_price between 100 and 1000;
+```
+> 会包含 100 和 1000 这两个临界值。  
+
+#### IS NULL、IS NOT NULL
+```SQL
+select product_name, purchase_price
+  from Product
+  where purchase_price is not null;
+```
+
+#### IN
+```SQL
+select product_name, purchase_price
+  from Product
+  where purchase_price in (320, 500, 5000);
+
+select product_name, purchase_price
+  from Product
+  where purchase_price not in (320, 500, 5000);
+```
+> 在使用IN 和 NOT IN 时是无法选取出 NULL 数据的。  
+
+#### **_使用子查询作为IN的参数_**
+```SQL
+-- CREATE TABLE ShopProduct
+-- (shop_id CHAR(4) NOT NULL,
+--  shop_name VARCHAR(200) NOT NULL,
+--  product_id CHAR(4) NOT NULL,
+--  quantity INTEGER NOT NULL,
+--  PRIMARY KEY (shop_id, product_id));
+-- BEGIN TRANSACTION;
+-- INSERT INTO ShopProduct (shop_id, shop_name, product_id, quantity) VALUES ('000A', '东京', '0001', 30);
+-- INSERT INTO ShopProduct (shop_id, shop_name, product_id, quantity) VALUES ('000A', '东京', '0002', 50);
+-- INSERT INTO ShopProduct (shop_id, shop_name, product_id, quantity) VALUES ('000A', '东京', '0003', 15);
+-- INSERT INTO ShopProduct (shop_id, shop_name, product_id, quantity) VALUES ('000B', '名古屋', '0002', 30);
+-- INSERT INTO ShopProduct (shop_id, shop_name, product_id, quantity) VALUES ('000B', '名古屋', '0003', 120);
+-- INSERT INTO ShopProduct (shop_id, shop_name, product_id, quantity) VALUES ('000B', '名古屋', '0004', 20);
+-- INSERT INTO ShopProduct (shop_id, shop_name, product_id, quantity) VALUES ('000B', '名古屋', '0006', 10);
+-- INSERT INTO ShopProduct (shop_id, shop_name, product_id, quantity) VALUES ('000B', '名古屋', '0007', 40);
+-- INSERT INTO ShopProduct (shop_id, shop_name, product_id, quantity) VALUES ('000C', '大阪', '0003', 20);
+-- INSERT INTO ShopProduct (shop_id, shop_name, product_id, quantity) VALUES ('000C', '大阪', '0004', 50);
+-- INSERT INTO ShopProduct (shop_id, shop_name, product_id, quantity) VALUES ('000C', '大阪', '0006', 90);
+-- INSERT INTO ShopProduct (shop_id, shop_name, product_id, quantity) VALUES ('000C', '大阪', '0007', 70);
+-- INSERT INTO ShopProduct (shop_id, shop_name, product_id, quantity) VALUES ('000D', '福冈', '0001', 100);
+-- COMMIT;
+
+select product_name, sale_price
+  from Product
+  where product_id in 
+    (select product_id from ShopProduct where shop_id = '000C');
+
+select product_name, sale_price
+  from Product
+  where product_id not in
+    (select product_id from ShopProduct where shop_id = '000A');
+```
+**子查询展开后的结果**
+```SQL
+SELECT product_name, sale_price
+  FROM Product
+  WHERE product_id IN ('0003', '0004', '0006', '0007');
+```
+
+#### **_EXIST_**
+```SQL
+select product_name, sale_price
+  from Product as P
+  where exists
+    (select * from ShopProduct as SP where shop_id = '000C' and P.product_id = SP.product_id);
+
+select product_name, sale_price
+  from Product as P
+  where not exists (select * from ShopProduct as SP where shop_id = '000C' and P.product_id = SP.product_id);
+```
+> EXIST 通常都会使用关联子查询作为参数。  
+> 理解 WHERE EXISTS (子查询):  
+>   对于当前外层这一行（Product），子查询有没有返回至少一行？  
+>   EXISTS是一个断言(TRUE/FALSE)。  
+> 选出 商店 000C 的 **product_ids** 之中的（以内的）。  
+
+#### CASE表达式
+```SQL
+select product_name, case
+  when product_type = '衣服' then 'A: ' || product_type
+  when product_type = '办公用品' then 'B: ' || product_type
+  when product_type = '厨房用具' then 'C: ' || product_type
+  else null
+  end as abc_product_type
+  from Product;
+
+-- product_name | abc_product_type
+-- ---------------+------------------
+-- T恤衫         | A ：衣服
+-- 打孔器        | B ：办公用品
+-- 运动T恤       | A ：衣服
+
+select
+  sum(case when product_type = '衣服' then sale_price else 0 end) as sum_price_clothes,
+  sum(case when product_type = '厨房用具' then sale_price else 0 end) as sum_price_kitchen,
+  sum(case when product_type = '办公用品' then sale_price else 0 end) as sum_price_office
+  from Product;
+
+-- sum_price_clothes | sum_price_kitchen | sum_price_office
+-- ------------------+-------------------+-----------------
+--  5000             | 11180             | 600
+```
+
+#### 简单CASE表达式
+```SQL
+SELECT product_name,
+  CASE product_type
+    WHEN '衣服' THEN 'A ：' || product_type
+    WHEN '办公用品' THEN 'B ：' || product_type
+    WHEN '厨房用具' THEN 'C ：' || product_type
+    ELSE NULL
+  END AS abc_product_type
+  FROM Product;
+```
+
 

@@ -4,6 +4,7 @@ description: ''
 pubDate: '2026-10-01'
 # heroImage: '../../assets/blog-placeholder-3\.jpg'
 ---
+> [演奏信息参考：Discogs - The Decca Sound](https://www.discogs.com/release/3299620-Various-The-Decca-Sound)
 
 #### Falla: The Three Cornered Hat
 **El Sombrero de Tres Picosc (三角帽)**  
