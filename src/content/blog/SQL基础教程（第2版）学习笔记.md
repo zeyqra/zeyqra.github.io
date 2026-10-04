@@ -613,4 +613,338 @@ SELECT product_name,
   FROM Product;
 ```
 
+### 第7章　集合运算
+#### 表的加减法
+#### UNION（并集）
+```SQL
+select product_id, product_name from Product
+union
+select product_id, product_name from Product2;
+```
+> 集合运算符会除去重复的记录。  
+> ■注意事项①——作为运算对象的记录的列数必须相同。  
+> ■注意事项②——作为运算对象的记录中列的类型必须一致。
+> ■注意事项③——可以使用任何SELECT语句，但ORDER BY子句只能在最后使用一次。  
 
+**使用UNION ALL选项，可以保留重复行。**
+```SQL
+select product_id, product_name from Product
+  where product_type = '厨房用具'
+  union all
+select product_id, product_name from Product2
+  where product_type = '厨房用具'
+  order by product_id;
+```
+
+#### INTERSECT（交集）
+```SQL
+select product_id, product_name from Product
+  intersect
+select product_id, product_name from Product2
+  order by product_id;
+```
+> 保留重复行时同样需要使用 INTERSECT ALL。  
+
+#### EXCEPT（差集: 去掉两者并集）
+```SQL
+select product_id, product_name from Product
+  except
+select product_id, product_name from Product2
+  order by product_id;
+```
+
+#### 联结
+#### INNER JOIN
+```SQL
+select SP.shop_id, SP.shop_name, SP.product_id, P.product_name, p.sale_price
+  from ShopProduct as SP inner join Product as P
+  on SP.product_id = P.product_id
+  where SP.shop_id = '000A';
+```
+> 进行内联结时必须使用ON子句，并且要书写在FROM和WHERE之间。  
+> SELECT子句中，同时存在于两张表中的列需要指定表名。  
+> 可以将联结之后的结果想象为新创建出来的一张表，再对这张表使用 GROUP BY、HAVING、ORDER BY 等工具  
+
+**将其创建成视图**
+```SQL
+create view ProductInnerJoinShopProduct (shop_id, shop_name, product_id, product_name, sale_price) as
+select shop_id, shop_name, ShopProduct.product_id, product_name, sale_price
+from ShopProduct inner join Product
+on ShopProduct.product_id = Product.product_id
+where shop_id = '000A';
+```
+
+#### OUTER JOIN
+```SQL
+select SP.shop_id, SP.shop_name, SP.product_id, P.product_name, p.sale_price
+from ShopProduct as SP right outer join Product as P
+on SP.product_id = P.product_id;
+
+select SP.shop_id, SP.shop_name, SP.product_id, P.product_name, p.sale_price
+from Product as P left outer join ShopProduct as SP
+on SP.product_id = P.product_id;
+```
+> 选取出单张表中全部的信息。（主表）  
+> 内联结只能选取出同时存在于两张表中的数据。（pid）  
+> LEFT 和 RIGHT 指定主表。  
+
+#### 3张以上的表的联结
+```SQL
+-- CREATE TABLE InventoryProduct
+-- ( inventory_id CHAR(4) NOT NULL,
+--  product_id CHAR(4) NOT NULL,
+--  inventory_quantity INTEGER NOT NULL,
+--  PRIMARY KEY (inventory_id, product_id));
+select shop_id, shop_name, ShopProduct.product_id, product_name, sale_price, inventory_quantity
+from ShopProduct
+inner join Product
+on ShopProduct.product_id = Product.product_id
+inner join InventoryProduct
+on ShopProduct.product_id = InventoryProduct.product_id
+where InventoryProduct.inventory_id = 'P001';
+```
+
+#### CROSS JOIN
+
+#### **_关系除法_**
+```SQL
+Skills（技术）表：关系除法中的除数
+skill
+------
+Oracle
+UNIX
+Java
+
+EmpSkills（员工技术）表：关系除法中的被除数
+emp skill
+-----------
+相田 Oracle
+相田 UNIX
+相田 Java
+相田 C#
+神崎 Oracle
+神崎 UNIX
+神崎 Java
+平井 UNIX
+平井 Oracle
+平井 PHP
+平井 Perl
+平井 C++
+若田部 Perl
+渡来 Oracle
+
+选取出掌握所有3个领域的技术的员工
+
+SELECT DISTINCT emp
+FROM EmpSkills ES1
+WHERE NOT EXISTS(
+  SELECT skill
+  FROM Skills
+  EXCEPT
+  SELECT skill
+  FROM EmpSkills ES2
+  WHERE ES1.emp = ES2.emp
+);
+
+执行结果（关系除法中的商）
+emp
+------
+神崎
+相田
+```
+
+### 第8章　SQL高级处理
+#### 窗口（分组）函数
+> 窗口函数兼具分组和排序两种功能。  
+> PARTITION BY 在横向上对表进行分组，而 ORDER BY 决定了纵向排序的规则。  
+> 窗口函数大体可以分为以下两种。  
+> ① 能够作为窗口函数的聚合函数（SUM、AVG、COUNT、MAX、MIN）  
+> ② RANK、DENSE_RANK、ROW_NUMBER 等专用窗口函数  
+
+**根据不同的商品种类（product_type），按照销售单价（sale_price）排序**
+```SQL
+select product_name, product_type, sale_price,
+  rank()
+  over(partition by product_type order by sale_price)
+  as ranking
+from Product;
+```
+
+**不指定PARTITION BY**
+```SQL
+select product_name, product_type, sale_price,
+  rank()
+  over(order by sale_price)
+  as ranking
+  from Product;
+```
+
+#### 专用窗口函数
+> rank(): 1、1、1、4  
+> dense_rank(): 1、1、1、2  
+> row_number(): 1、2、3、4  
+
+原则上窗口函数只能在SELECT子句中使用。
+
+-- SELECT FROM WHERE GROUP BY HAVING 窗口函数 ORDER BY
+-- FROM WHERE GROUP BY HAVING 窗口函数 SELECT ORDER BY
+
+
+#### 聚合函数作为窗口函数
+将聚合函数作为窗口函数使用时，会以当前记录为基准来决定汇总对象的记录。
+```SQL
+select product_id, product_name, sale_price,
+  sum(sale_price)
+  over(order by product_id)
+  as current_sum
+from Product;
+
+select product_id, product_name, sale_price,
+  avg(sale_price)
+  over(order by product_id)
+  as current_avg
+from Product;
+
+#### 计算移动平均
+```SQL
+select product_id, product_name, sale_price,
+  avg(sale_price)
+  over(order by product_id
+    rows 2 preceding)
+  as current_avg
+from Product;
+
+select product_id, product_name, sale_price,
+  avg(sale_price)
+  over(order by product_id
+    rows between current row and 2 following)
+  as current_avg
+from Product;
+
+select product_id, product_name, sale_price,
+  avg(sale_price)
+  over(order by product_id
+    rows between 1 preceding and 1 following)
+  as current_avg
+from Product;
+```
+
+#### 两个ORDER BY
+> OVER 子句中的 ORDER BY 只用来决定窗口函数的计算顺序，不保证结果的排列顺序。  
+> 最后使用 ORDER BY 子句保证 SELECT 语句的结果的排列顺序。  
+```SQL
+select product_id, product_name, sale_price,
+  rank()
+  over(order by sale_price)
+  as ranking
+from Product
+order by ranking;
+```
+
+#### GROUPING 运算符
+> ROLLUP——按product_type分组，同时得出合计和小计。  
+```SQL
+select '合计' as product_type, sum(sale_price)
+from Product
+union all
+select product_type, sum(sale_price)
+from Product
+group by product_type;
+
+select product_type, sum(sale_price)
+from Product
+group by rollup(product_type);
+
+product_type sum_price
+-- -------------- ---------
+--               16780
+-- 厨房用具       11180
+-- 办公用品       600
+-- 衣服           5000
+```
+> 同时合计了：  
+> ① GROUP BY ()  
+> ② GROUP BY (product_type)  
+
+#### **_按 product_type、regist_date 分组_**
+```SQL
+select product_type, regist_date, sum(sale_price)
+from Product
+group by product_type, regist_date;
+
+select product_type, regist_date, sum(sale_price)
+from Product
+group by rollup(product_type, regist_date);
+
+product_type  regist_date sum_price
+                            16780  模块①
+
+厨房用具                      11180
+办公用品                      600   模块②
+衣服                         5000
+
+办公用品      2009-09-11      500   模块③
+办公用品      2009-11-11      100
+厨房用具      2008-04-28      880
+厨房用具      2009-01-15      6800
+厨房用具      2009-09-20      3500
+衣服          2009-09-20     1000
+衣服                         4000
+```
+> 同时合计了：  
+> ① GROUP BY ()  
+> ② GROUP BY (product_type)  
+> ③ GROUP BY (product_type, regist_date)  
+
+#### 判断超级分组记录的 NULL 的特定函数 —— GROUPING 函数。
+> 判断列名，超级分组记录所产生的 NULL 时返回 1，其他情况返回 0  
+```SQL
+select
+  case when grouping(product_type) = 1 then '商品种类 合计' else product_type end as product_type,
+  case when grouping(regist_date) = 1 then '登记日期 合计' else
+  cast(regist_date as varchar(16)) end as regist_date,
+  sum(sale_price) as sum_price
+from Product
+group by rollup(product_type, regist_date);
+```
+
+#### CUBE——用数据来搭积木
+```SQL
+select
+  case when grouping(product_type) = 1 then '商品种类 合计' else product_type end as product_type,
+  case when grouping(regist_date) = 1 then '登记日期 合计' else cast(regist_date as varchar(16)) end as regist_date,
+  sum(sale_price) as sum_price
+from Product
+group by cube(product_type, regist_date);
+
+相比上一次结果，追加了：GROUP BY (regist_date) 
+product_type  regist_date   sum_price
+多商品种类      2008-04-28    880
+商品种类 合计   2009-01-15    6800
+商品种类 合计   2009-09-11    500
+商品种类 合计   2009-09-20    4500
+商品种类 合计   2009-11-11    100
+商品种类 合计                 4000
+```
+
+#### GROUPING SETS——取得期望的积木
+```SQL
+select
+  case when grouping(product_type) = 1 then '商品种类 合计' else product_type end as product_type,
+  case when grouping(regist_date) = 1 then '登记日期 合计' else cast(regist_date as varchar(16)) end as regist_date,
+  sum(sale_price) as sum_price
+from Product
+group by grouping sets(product_type, regist_date);
+
+product_type  regist_date   sum_price
+-------------- ------------ ----------
+商品种类 合计   2008-04-28    880
+商品种类 合计   2009-01-15    6800
+商品种类 合计   2009-09-11    500
+商品种类 合计   2009-09-20    4500
+商品种类 合计   2009-11-11    100
+商品种类 合计                 4000
+厨房用具        登记日期 合计  11180
+办公用品        登记日期 合计   600
+衣服           登记日期 合计   5000
+```
