@@ -7,9 +7,9 @@ import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
 import type { MarkdownHeading } from 'astro';
 
-type Props = CollectionEntry<'blog'>['data'] & { headings: MarkdownHeading[] };
+type Props = CollectionEntry<'blog'>['data'] & { headings?: MarkdownHeading[] };
 
-const { title, description, pubDate, updatedDate, heroImage, headings } = Astro.props;
+const { title, description, pubDate, updatedDate, heroImage, headings = [] } = Astro.props;
 const tocHeadings = headings.filter(({ depth }) => depth >= 2);
 ---
 
