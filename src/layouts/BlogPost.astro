@@ -159,7 +159,7 @@ const tocHeadings = headings.filter(({ depth }) => depth >= 2);
 								<li>
 									<a
 										href={`#${heading.slug}`}
-										style={`padding-left: ${(heading.depth - 2) * 0.8 + 0.65}rem`}
+										style={`padding-left: ${(heading.depth - Math.min(...tocHeadings.map(h => h.depth))) * 0.8 + 0.65}rem`}
 									>
 										{heading.text}
 									</a>
